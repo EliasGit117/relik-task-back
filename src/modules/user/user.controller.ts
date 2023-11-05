@@ -1,46 +1,39 @@
-import { Controller, Get, NotFoundException, Param, ParseIntPipe } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { GetUserByIdParamsDTO } from "./dtos/get-user-by-id-params-dto";
-import { Type } from "class-transformer";
+import { Body, Controller, Delete, Get, NotFoundException, Param, Post } from "@nestjs/common";
 import { User } from "./schemas/user.schema";
-import { InjectModel } from "@nestjs/mongoose";
-import mongoose, { Model } from "mongoose";
-import { ObjectIdPipe } from "../../util/pipes/object-id-pipe";
-
-const users = [
-  { id: 0, name: "first" },
-  { id: 1, name: "second" },
-  { id: 2, name: "third" }
-];
+import mongoose from "mongoose";
+import { ObjectIdPipe } from "../../core/pipes/object-id-pipe";
+import { UserService } from "./user.service";
+import CreateUser from "../auth/dtos/create-user";
+import * as bcrypt from 'bcrypt';
 
 @Controller("user")
 export class UserController {
 
-  constructor(
-    @InjectModel(User.name) private user: Model<User>
-  ) {
-  }
+  constructor(private userService: UserService) {}
 
   @Get()
-  getAll() {
-    return users;
+  async getAll() {
+    return await this.userService.getAll();
   }
 
-  @Get("/test")
-  async create(): Promise<User> {
-    return new this.user({
-      name: "test1",
-      age: 777
-    }).save();
+  @Post()
+  async create(@Body() userForCreation: CreateUser): Promise<User> {
+    return await this.userService.create(userForCreation);
   }
 
   @Get("/:id")
   async getById(@Param("id", ObjectIdPipe) id: mongoose.Types.ObjectId) {
-    const res = await this.user.findById(id).exec();
+    const res = await this.userService.getById(id);
 
-    if (!res)
-      throw new NotFoundException();
-
+    if (!res) throw new NotFoundException();
     return res;
+  }
+
+  @Delete("/:id")
+  async delete(@Param("id", ObjectIdPipe) id: mongoose.Types.ObjectId) {
+    const res = await this.userService.deleteById(id);
+
+    if (res.deletedCount <= 0)
+      throw new NotFoundException();
   }
 }
